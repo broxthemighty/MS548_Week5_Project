@@ -2,8 +2,8 @@
 service.py
 Author: Matt Lindborg
 Course: MS548 - Advanced Programming Concepts and AI
-Assignment: Week 4
-Date: 10/01/2025
+Assignment: Week 5
+Date: 10/11/2025
 
 Purpose:
 This file implements the "business logic" for Learnflow Base.
@@ -13,7 +13,6 @@ Key responsibilities:
     - Store entries as LearningLog objects (defined in domain.py).
     - Provide summaries and history views for the GUI.
     - Clear/reset all entries.
-    - Stub in hooks for logfile writing (Week 3 requirement).
 This keeps the GUI and data model decoupled, enabling future
 expansion (OOP classes, logfile persistence, AI integration).
 """
@@ -179,7 +178,9 @@ class LearnflowService:
     # ------------------- HELPER FUNCTIONS -------------------
 
     def speak_if_enabled(self, text: str) -> None:
-        """Speak a line through TTS if the user has audio enabled."""
+        """
+        Speak a line through TTS if the user has audio enabled.
+        """
         self.tts.speak(text)
 
     def analyze_mood(self, text: str) -> str:
@@ -196,8 +197,6 @@ class LearnflowService:
             return "stuck"
         else:                   # neutral sentiment
             return "neutral"
-    
-    # ------------------- PLACEHOLDERS (Future Features) -------------------
 
     def write_log(self, record: "LearningLog"):
         """
@@ -238,7 +237,7 @@ class LearnflowService:
         log_file = "session_log.json"
         entry = {"user": user_input, "ai": ai_output}
 
-        # Load existing log or start new one
+        # load existing log or start new one
         if os.path.exists(log_file):
             try:
                 with open(log_file, "r", encoding="utf-8") as f:
@@ -269,10 +268,26 @@ class LearnflowService:
             except json.JSONDecodeError:
                 return []
             
+    # --- Session Chat File Logging ---
+    def update_chat_log(self, full_text: str, append: bool = False):
+        """
+        Write or append the complete AI chat text to a persistent log file.
+        Called whenever the AI output box is updated.
+        """
+        log_path = "chat_history.txt"
+        mode = "a" if append else "w"
+        try:
+            with open(log_path, mode, encoding="utf-8") as f:
+                f.write(full_text if append else full_text.rstrip() + "\n")
+        except Exception as e:
+            print(f"[WARN] Failed to write chat log: {e}")
+                
     # ------------------- PROMPT MANAGEMENT -------------------
 
     def set_prompt(self, text: str):
-        """Save a custom system prompt to prompt.txt."""
+        """
+        Save a custom system prompt to prompt.txt.
+        """
         with open("prompt.txt", "w", encoding="utf-8") as f:
             f.write(text.strip())
 
@@ -280,7 +295,9 @@ class LearnflowService:
             self.responses.system_prompt = text.strip()
 
     def get_prompt(self) -> str:
-        """Load the current system prompt from file or return default."""
+        """
+        Load the current system prompt from file or return default.
+        """
         import os
         if os.path.exists("prompt.txt"):
             with open("prompt.txt", "r", encoding="utf-8") as f:
@@ -288,7 +305,9 @@ class LearnflowService:
         return getattr(self.responses, "system_prompt", "")
     
     def reset_context(self):
-        """Clear conversation log and reload the LLM context."""
+        """
+        Clear conversation log and reload the LLM context.
+        """
         import os
         if os.path.exists("session_log.json"):
             os.remove("session_log.json")
@@ -307,7 +326,9 @@ class LlamaEngine:
         self.context = []
 
     def reply(self, user_text: str) -> str:
-        """Send user input to the LLM and return response, maintaining context."""
+        """
+        Send user input to the LLM and return response, maintaining context.
+        """
         full_prompt = self.system_prompt + "\n"
         for msg in self.context[-5:]:  # keep last 5 for brevity
             full_prompt += f"User: {msg['user']}\nAssistant: {msg['ai']}\n"
@@ -321,7 +342,9 @@ class LlamaEngine:
         return reply
 
     def reset_context(self):
-        """Clears in-memory conversation context."""
+        """
+        Clears in-memory conversation context.
+        """
         self.context = []
     
     

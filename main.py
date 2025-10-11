@@ -2,8 +2,8 @@
 main.py
 Author: Matt Lindborg
 Course: MS548 - Advanced Programming Concepts and AI
-Assignment: Week 4
-Date: 10/01/2025
+Assignment: Week 5
+Date: 10/11/2025
 
 Purpose:
 This is the entry point for the Learnflow Base application.
@@ -16,7 +16,7 @@ The structure follows best practices:
 
 # --- Imports ---
 import tkinter as tk                  # Tkinter for GUI window creation
-from service import LearnflowService  # Service layer for business logic
+from service import LearnflowService  # service layer for business logic
 from ui import App                    # GUI class
 
 def main():

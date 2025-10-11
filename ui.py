@@ -2,8 +2,8 @@
 ui.py
 Author: Matt Lindborg
 Course: MS548 - Advanced Programming Concepts and AI
-Assignment: Week 4
-Date: 10/01/2025
+Assignment: Week 5
+Date: 10/11/2025
 
 Purpose:
 This file defines the Tkinter-based graphical user interface (GUI)
@@ -161,17 +161,17 @@ class App:
         # image on the left
         try:
             self.image = tk.PhotoImage(file="images\\image2_50pc.png")
-            self.image_label = tk.Label(middle_frame, image=self.image)
+            self.image_label = tk.Label(middle_frame, image=self.image, width=512, height=512)
             self.image_label.pack(side="left", padx=(0, 10))
         except Exception:
             # fail gracefully if image not found
             pass
         
-        # image on the left (animated) mattl
+        # image on the left (animated) future integration, maybe use textblob for emotions on specific images
         try:
             import itertools
             from PIL import Image, ImageTk
-            self.image_frames = [ImageTk.PhotoImage(Image.open(f"images/frame_{i}.png").resize((150, 150))) for i in range(1, 5)]
+            self.image_frames = [ImageTk.PhotoImage(Image.open(f"images/frame_{i}.png").resize((512, 512))) for i in range(1, 5)]
             self.image_label = tk.Label(middle_frame, image=self.image_frames[0])
             self.image_label.pack(side="left", padx=(0, 10))
 
@@ -200,7 +200,6 @@ class App:
             ).pack(pady=2, anchor="w")
 
         # tts audio checkbox
-        # placed at the bottom of buttons_frame, just above the Send button
         self.audio_var = tk.BooleanVar(value=True)
         audio_chk = tk.Checkbutton(
             buttons_frame,
@@ -210,8 +209,8 @@ class App:
         )
         audio_chk.pack(pady=(20, 5), anchor="w")
 
-        # --- Bottom row: ai input and responses output box ---
-        ai_frame = tk.Frame(main_frame) # llm not integrated yet
+        # bottom row: ai input and responses output box ---
+        ai_frame = tk.Frame(main_frame)
         ai_frame.grid(row=3, column=0, sticky="ew", pady=(0, 5), padx=(0, 5))
 
         # input field for user prompt to AI
@@ -220,7 +219,7 @@ class App:
             width=60, 
             font=default_font
             )
-        self.ai_entry.insert(0, "Type your question for Verita here...")
+        self.ai_entry.insert(0, "Type your question for Verita...")
 
         # remove placeholder text when clicking into the box
         self.ai_entry.bind("<FocusIn>", self.clear_placeholder)
@@ -234,7 +233,7 @@ class App:
         # location in the frame
         self.ai_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        # send button (currently only echoes placeholder response)
+        # send button
         self.ai_send_button = tk.Button(
             ai_frame,
             text="Send",
@@ -275,7 +274,7 @@ class App:
         self.ai_output_box.pack(side="left", fill="both", expand=True)
         ai_scroll.config(command=self.ai_output_box.yview)
         
-        # Timer label under AI output box
+        # timer label under AI output box
         self.response_time_label = tk.Label(
             ai_output_frame,
             text="Response time: —",
@@ -285,7 +284,7 @@ class App:
         self.response_time_label.pack(fill="x", padx=5, pady=(0, 5), anchor="w")
 
         # insert placeholder text at start
-        self.ai_output_box.insert(tk.END, "AI responses will appear here...\n")
+        self.ai_output_box.insert(tk.END, "Your learning journey with Verita begins here...\n")
         self.ai_output_box.config(state="disabled")
 
         # link scrollbar back to AI output box
@@ -299,36 +298,100 @@ class App:
         self.render_summary()
 
     # ------------------- HELPERS -------------------
-    def custom_input_popup(self, title: str, prompt: str) -> str | None:
+    def custom_input_popup(
+    self,
+    title: str,
+    prompt: str = "",
+    ok_text: str = "OK",
+    show_cancel: bool = False,
+    multiline: bool = False
+) -> str | None:
         """
         Custom popup dialog for text input.
-        Reused by button handlers to collect user entries.
+        - title: popup window title
+        - prompt: text shown above or pre-filled inside the box
+        - ok_text: label for the confirmation button ("OK" or "Save")
+        - show_cancel: whether to display a Cancel button
+        - multiline: whether to use a Text box (multi-line) or Entry (single line)
+        Returns the entered string or None if canceled/closed.
         """
         popup = tk.Toplevel(self.root)
         popup.title(title)
+        width, height = (400, 250) if multiline else (300, 150)
+        self.center_popup(popup, width, height)
 
-        # calculate centered popup position relative to root window
-        self.center_popup(popup, 300, 150)
+        # label for instruction or context
+        if not multiline and prompt:
+            tk.Label(
+                popup,
+                text=prompt,
+                font=("Segoe UI", 9),
+                wraplength=width - 40,
+                justify="left"
+            ).pack(pady=(10, 5), padx=10)
 
-        # add label and entry box
-        tk.Label(popup, text=prompt, font=("Segoe UI", 9)).pack(pady=10)
-        entry = tk.Entry(popup, width=40)
-        entry.pack(pady=5)
-        entry.focus_set()
-
-        # result variable
         result = {"value": None}
 
-        # ok button event
+        # multi-line text or single-line entry
+        if multiline:
+            text_widget = tk.Text(
+                popup,
+                width=45,
+                height=6,
+                wrap="word",
+                font=("Segoe UI", 10),
+                bg="#1e1e1e",
+                fg="#dcdcdc",
+                insertbackground="#ffffff"
+            )
+            text_widget.insert("1.0", prompt or "")
+            text_widget.pack(padx=10, pady=(10, 10), fill="both", expand=True)
+            text_widget.focus_set()
+        else:
+            text_widget = tk.Entry(popup, width=40)
+            text_widget.insert(0, prompt or "")
+            text_widget.pack(pady=10)
+            text_widget.focus_set()
+
+        # button frame for OK / Save / Cancel
+        btn_frame = tk.Frame(popup, bg="#2b2b2b")
+        btn_frame.pack(pady=(5, 10))
+
         def on_ok(event=None):
-            result["value"] = entry.get()
+            val = text_widget.get("1.0", "end-1c") if multiline else text_widget.get()
+            result["value"] = val.strip()
             popup.destroy()
 
-        # button widget
-        tk.Button(popup, text="OK", command=on_ok).pack(pady=10)
-        popup.bind("<Return>", on_ok) # bind return key to ok
+        def on_cancel():
+            result["value"] = None
+            popup.destroy()
+
+        ok_btn = tk.Button(
+            btn_frame,
+            text=ok_text,
+            bg="#444444",
+            fg="#ffffff",
+            activebackground="#666666",
+            activeforeground="#ffffff",
+            command=on_ok
+        )
+        ok_btn.pack(side="left", padx=5)
+
+        if show_cancel:
+            cancel_btn = tk.Button(
+                btn_frame,
+                text="Cancel",
+                bg="#444444",
+                fg="#ffffff",
+                activebackground="#666666",
+                activeforeground="#ffffff",
+                command=on_cancel
+            )
+            cancel_btn.pack(side="left", padx=5)
+
+        popup.bind("<Return>", on_ok)
         self.root.wait_window(popup)
-        return result["value"] # return the result variable
+        return result["value"]
     
     def custom_message_popup(self, title: str, message: str, msg_type: str = "info"):
         """
@@ -336,14 +399,21 @@ class App:
         - title: window title text
         - message: main message content
         - msg_type: "info", "error", "warning" (changes color scheme)
+        Enhanced version: wraps text and auto-sizes for readability.
         """
 
-        # create a popup window
         popup = tk.Toplevel(self.root)
         popup.title(title)
 
-        # center popup relative to main window
-        self.center_popup(popup, 300, 150)
+        # determine size based on message length
+        base_width = 350
+        base_height = 180
+        if len(message) > 150:
+            base_height = 250
+        if len(message) > 300:
+            base_height = 320
+
+        self.center_popup(popup, base_width, base_height)
 
         # choose colors based on message type
         if msg_type == "error":
@@ -358,18 +428,23 @@ class App:
 
         popup.configure(bg=bg_color)
 
-        # label for message text
-        label = tk.Label(
+        # scrollable frame for long messages
+        import tkinter.scrolledtext as st
+        text_area = st.ScrolledText(
             popup,
-            text=message,
+            wrap="word",
+            height=6,
+            font=("Segoe UI", 10),
             bg=bg_color,
             fg=fg_color,
-            wraplength=260,
-            font=("Segoe UI", 9)
+            relief="flat",
+            borderwidth=0
         )
-        label.pack(pady=15, padx=10)
+        text_area.insert("1.0", message)
+        text_area.config(state="disabled")
+        text_area.pack(pady=(15, 10), padx=10, fill="both", expand=True)
 
-        # ok button to close popup
+        # OK button to close popup
         ok_button = tk.Button(
             popup,
             text="OK",
@@ -379,11 +454,10 @@ class App:
             activeforeground="#ffffff",
             command=popup.destroy
         )
-        ok_button.pack(pady=10)
-
-        # focus button and allow Enter key to close
+        ok_button.pack(pady=(0, 10))
         ok_button.focus_set()
         popup.bind("<Return>", lambda event=None: popup.destroy())
+        return popup
 
     def render_summary(self) -> None:
         """
@@ -402,7 +476,7 @@ class App:
         """
         Remove placeholder text when user clicks into the entry box.
         """
-        if self.ai_entry.get().strip() == "Type your question for Verita here...":
+        if self.ai_entry.get().strip() == "Type your question for Verita...":
             self.ai_entry.delete(0, tk.END)
             self.ai_entry.unbind("<FocusIn>")
 
@@ -412,8 +486,8 @@ class App:
         keep focus in the entry box until Enter is pressed.
         """
         current_text = self.ai_entry.get().strip()
-        if current_text and current_text != "Type your question for Verita here...":
-            # Keep focus in the entry so user can continue typing
+        if current_text and current_text != "Type your question for Verita...":
+            # keep focus in the entry so user can continue typing
             self.ai_entry.focus_set()
 
     def _handle_ai_input(self, user_input: str):
@@ -422,7 +496,7 @@ class App:
         Handles AI input: shows 'processing...', then replaces it with the LLM's reply.
         """
         user_input = user_input.strip()
-        if not user_input or user_input == "Type your question for Verita here...":
+        if not user_input or user_input == "Type your question for Verita...":
             return
 
         self.ai_output_box.config(state="normal")
@@ -478,6 +552,10 @@ class App:
                         fg=color
                     )
 
+                    # write the current conversation to chat_history.txt
+                    full_text = self.ai_output_box.get("1.0", "end-1c")
+                    self.service.update_chat_log(full_text)
+                    
                     # speak the response via TTS
                     self.service.speak_if_enabled(reply)
 
@@ -487,7 +565,7 @@ class App:
             except Exception as e:
                 self.root.after(0, lambda: self.custom_message_popup("Error", f"AI Error: {e}", msg_type="error"))
 
-        # ✅ Correct placement — actually start the background thread here
+        # start the background thread here
         threading.Thread(target=run_llm, daemon=True).start()
 
         # clear entry box after starting the thread
@@ -501,30 +579,69 @@ class App:
             self.service.speak_if_enabled(reply)
         
     def speech_to_text(self):
-        """Convert speech input to text and insert it into the entry box."""
+        """
+        Convert speech input to text and insert it into the entry box.
+        """
         import threading
+
         def record_audio():
             try:
                 import speech_recognition as sr
                 r = sr.Recognizer()
+
+                # adjust sensitivity to ambient noise
                 with sr.Microphone() as source:
-                    self.custom_message_popup("Listening", "Speak now...", msg_type="info")
-                    audio = r.listen(source, timeout=8)
+                    popup = self.custom_message_popup("Listening", "Speak now…", msg_type="info")
+
+                    # optional ambient calibration (increases reliability in noisy rooms)
+                    r.adjust_for_ambient_noise(source, duration=0.8)
+
+                    # increase energy threshold for clarity and allow longer phrases
+                    r.energy_threshold = 300
+                    r.pause_threshold = 1.2  # seconds of silence before stopping
+                    r.phrase_threshold = 0.3
+                    r.non_speaking_duration = 0.5
+
+                    # listen for speech up to 20 seconds total
+                    audio = r.listen(source, timeout=8, phrase_time_limit=20)
+
+                # recognize speech with Google Speech Recognition
                 text = r.recognize_google(audio)
+                
+                # close the listening popup
+                if popup and popup.winfo_exists():
+                    popup.destroy()
+
+                # update GUI input box
                 self.ai_entry.delete(0, tk.END)
                 self.ai_entry.insert(0, text)
                 self._handle_ai_input(text)
+
+            except sr.WaitTimeoutError:
+                self.custom_message_popup("Timeout", "No speech detected. Please try again.", msg_type="warning")
+            except sr.UnknownValueError:
+                self.custom_message_popup("Error", "Speech was unclear. Please try again.", msg_type="error")
+            except sr.RequestError as e:
+                self.custom_message_popup("Error", f"Speech API unavailable: {e}", msg_type="error")
             except Exception as e:
-                self.custom_message_popup("Error", f"Speech recognition failed: {e}", msg_type="error")
+                self.custom_message_popup(
+                    "Speech Error",
+                    f"Speech recognition failed: {e}\nTry reinstalling PyAudio or checking your microphone.",
+                    msg_type="error"
+                )
 
         threading.Thread(target=record_audio, daemon=True).start()
 
     def submit_ai_text(self, event=None):
-        """Triggered when pressing Enter."""
+        """
+        Triggered when pressing Enter.
+        """
         self._handle_ai_input(self.ai_entry.get())
 
     def display_ai_response(self, user_input: str):
-        """Triggered when clicking Send."""
+        """
+        Triggered when clicking Send.
+        """
         self._handle_ai_input(user_input)
 
     # ------------------- EVENT HANDLERS -------------------
@@ -593,7 +710,7 @@ class App:
         prompt_menu = tk.Menu(menubar, tearoff=0)
         prompt_menu.add_command(label="View/Edit Prompt", command=self.edit_prompt)
         prompt_menu.add_command(label="Save Prompt", command=self.save_prompt)
-        prompt_menu.add_command(label="Load Prompt", command=self.load_prompt)
+        prompt_menu.add_command(label="Current Prompt", command=self.load_prompt)
         menubar.add_cascade(label="Prompt", menu=prompt_menu)
 
         # session controls
@@ -704,16 +821,19 @@ class App:
 
     def show_history(self):
         """
-        Display a popup window with the full history of all entries.
-        Derived classes display extra attributes:
-            - GoalLog = shows status
-            - ReflectionLog = shows mood
+        Display the AI chat history from chat_history.txt.
+        Opens the saved transcript file (if it exists) in a scrollable popup.
         """
-        history = self.service.snapshot().entries
+        import os
+
+        log_file = "chat_history.txt"
+        if not os.path.exists(log_file):
+            self.custom_message_popup("Chat History", "No chat history found yet.")
+            return
 
         popup = tk.Toplevel(self.root)
-        popup.title("History Log")
-        self.center_popup(popup, 600, 400)
+        popup.title("Chat History")
+        self.center_popup(popup, 650, 450)
 
         scrollbar = tk.Scrollbar(popup)
         scrollbar.pack(side="right", fill="y")
@@ -722,27 +842,15 @@ class App:
         text_area.pack(fill="both", expand=True)
         scrollbar.config(command=text_area.yview)
 
-        for etype, records in history.items():
-            if records:
-                text_area.insert(tk.END, f"{etype.value}:\n")
-                for idx, rec in enumerate(records, 1):
-                    line = f"  {idx}. [{rec.timestamp}] {rec.text}"
-
-                    # if record is a GoalLog, add status
-                    from domain import GoalLog, ReflectionLog
-                    if isinstance(rec, GoalLog):
-                        line += f" (Status: {rec.status})"
-
-                    # if record is a ReflectionLog, add mood
-                    elif isinstance(rec, ReflectionLog):
-                        if rec.mood:
-                            line += f" (Mood: {rec.mood})"
-
-                    text_area.insert(tk.END, line + "\n")
-
-                text_area.insert(tk.END, "\n")
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                content = f.read()
+            text_area.insert(tk.END, content)
+        except Exception as e:
+            text_area.insert(tk.END, f"Failed to read log: {e}")
 
         text_area.config(state="disabled")
+
 
     def load_llm(self):
         """
@@ -785,43 +893,85 @@ class App:
         popup.geometry(f"{width}x{height}+{pos_x}+{pos_y}")
         
     def change_avatar(self):
-        """Allow user to choose a new avatar image."""
+        """
+        Allow user to choose a new avatar image while maintaining fixed display size.
+        """
         file_path = filedialog.askopenfilename(
             title="Select Avatar Image",
             filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif")]
         )
         if not file_path:
             return
+
         try:
             from PIL import Image, ImageTk
-            img = Image.open(file_path).resize((150, 150))
-            self.image = ImageTk.PhotoImage(img)
-            self.image_label.config(image=self.image)
+
+            # fixed display box dimensions
+            target_width = 512
+            target_height = 512
+
+            # open the selected image
+            img = Image.open(file_path)
+
+            # calculate proportional resize to fit within the target box
+            img.thumbnail((target_width, target_height), Image.LANCZOS)
+
+            # create a new blank image (with transparent or black background) that matches the fixed display box size
+            from PIL import ImageOps
+            fixed_img = Image.new("RGBA", (target_width, target_height), (0, 0, 0, 0))
+            img_x = (target_width - img.width) // 2
+            img_y = (target_height - img.height) // 2
+            fixed_img.paste(img, (img_x, img_y))
+
+            # convert to Tkinter-compatible image 
+            self.image = ImageTk.PhotoImage(fixed_img)
+
+            # update the existing label image
+            self.image_label.config(image=self.image, width=target_width, height=target_height)
+
+            # confirmation popup
             self.custom_message_popup("Avatar Changed", "AI avatar updated successfully.")
         except Exception as e:
             self.custom_message_popup("Error", f"Failed to change avatar: {e}", msg_type="error")
         
     def edit_prompt(self):
-        """View or edit the current system prompt."""
-        current = self.service.get_prompt()
-        new_text = self.custom_input_popup("Edit Prompt", current or "Enter new prompt text:")
-        if new_text:
-            self.service.set_prompt(new_text)
-            self.custom_message_popup("Prompt Updated", "System prompt saved successfully.")
+        """
+        Open a popup to view or edit the current system prompt.
+        """
+        current_prompt = self.service.get_prompt() or "You are a friendly learning advisor who motivates students kindly."
+
+        # use the enhanced custom_input_popup
+        new_prompt = self.custom_input_popup(
+            title="Edit Prompt",
+            prompt=current_prompt,
+            ok_text="Save",
+            show_cancel=True,
+            multiline=True
+        )
+
+        if new_prompt:
+            self.service.set_prompt(new_prompt)
+            self.custom_message_popup("Prompt Saved", "System prompt updated successfully.")
 
     def save_prompt(self):
-        """Force-save current prompt text."""
+        """
+        Force-save current prompt text.
+        """
         text = self.service.get_prompt()
         self.service.set_prompt(text)
         self.custom_message_popup("Prompt", "Prompt saved to prompt.txt.")
 
     def load_prompt(self):
-        """Reload prompt from file."""
+        """
+        Reload prompt from file.
+        """
         text = self.service.get_prompt()
         self.custom_message_popup("Prompt Loaded", text or "No saved prompt found.")
 
     def refresh_session(self):
-        """Reset LLM context and clear on-screen conversation."""
+        """
+        Reset LLM context and clear on-screen conversation.
+        """
         msg = self.service.reset_context()
         self.ai_output_box.config(state="normal")
         self.ai_output_box.delete("1.0", tk.END)
@@ -849,20 +999,20 @@ class App:
         with open(file_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
 
-            # Write header row
+            # write header row
             writer.writerow(["EntryType", "Timestamp", "Text", "Mood", "Status"])
 
-            # Write one row per log entry
+            # write one row per log entry
             for etype, records in history.items():
                 for rec in records:
                     mood = rec.mood if hasattr(rec, "mood") else ""
                     status = ""
 
-                    # Handle derived class specifics
+                    # handle derived class specifics
                     if isinstance(rec, GoalLog):
                         status = rec.status
                     elif isinstance(rec, ReflectionLog):
-                        mood = rec.mood  # ReflectionLog should always carry mood
+                        mood = rec.mood  # reflectionLog should always carry mood
 
                     writer.writerow([
                         etype.value,

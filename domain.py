@@ -2,8 +2,8 @@
 domain.py
 Author: Matt Lindborg
 Course: MS548 - Advanced Programming Concepts and AI
-Assignment: Week 4
-Date: 10/01/2025
+Assignment: Week 5
+Date: 10/11/2025
 
 Purpose:
 This file defines the core domain model for the Learnflow Base application.
