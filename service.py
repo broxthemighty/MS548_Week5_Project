@@ -24,6 +24,7 @@ from domain import EntryType, LearnflowState, LearningLog  # import domain model
 from textblob import TextBlob                              # import for sentiment analysis
 from llama_cpp import Llama                                # import for ai llm library
 import threading                                           # import for multi threading
+import llama_cpp                                           # import for adding gpu power
 
 # --- Individual Service Classes for specific applications ---
 class TTSService:
@@ -120,14 +121,14 @@ class LearnflowService:
         for k in self._state.entries:
             self._state.entries[k] = []
             
-    def set_llm(self, model_path: str):
+    def set_llm(self, model_path: str, gpu_layers: int = 80):
         """
         Dynamically reload the Llama model with a new GGUF file.
         """
         try:
-            print(f"Loading new model: {model_path}")
-            self.responses = LlamaEngine(model_path=model_path)
-            return f"Model loaded: {model_path}"
+            print(f"Loading new model: {model_path} with {gpu_layers} GPU layers")
+            self.responses = LlamaEngine(model_path=model_path, n_gpu_layers=gpu_layers)
+            return f"Model loaded with GPU acceleration: {model_path}"
         except Exception as e:
             return f"Error loading model: {e}"
         
@@ -319,11 +320,43 @@ class LlamaEngine:
     Wrapper around llama-cpp to generate responses from a local GGUF model.
     Includes support for persistent prompt and session history.
     """
-    def __init__(self, model_path="llm/Hermes-3-Llama-3.1-8B.Q5_K_M.gguf"):
+    def __init__(self, model_path="llm/Hermes-3-Llama-3.1-8B.Q5_K_M.gguf", n_gpu_layers=80):
         self.model_path = model_path
-        self.llm = Llama(model_path=model_path, n_ctx=2048, n_threads=8, verbose=True)
+        self.llm = Llama(
+            model_path=model_path,
+            n_ctx=2048,
+            n_threads=8,               # CPU threads for mixed compute
+            n_gpu_layers=n_gpu_layers, # number of layers to offload to GPU
+            n_batch=512,               # process more tokens per pass
+            verbose=True
+        )
+        self.backend_info = self.get_backend_info() # detect CUDA/CPU backend
         self.system_prompt = "You are a friendly learning advisor who motivates students kindly."
         self.context = []
+        
+    def get_backend_info(self):
+        """
+        Detect whether CUDA-capable GPU is active and available.
+        Combines torch (runtime GPU check) + llama.cpp system info for maximum accuracy.
+        """
+        try:
+            import torch
+            cuda_available = torch.cuda.is_available()
+            if cuda_available:
+                device_index = torch.cuda.current_device()
+                device_name = torch.cuda.get_device_name(device_index)
+                cuda_version = torch.version.cuda
+                return f"GPU Active ({device_name}, CUDA {cuda_version})"
+            else:
+                # Double-check llama.cpp build flags as fallback
+                import llama_cpp
+                info = llama_cpp.llama_cpp.llama_print_system_info().decode().lower()
+                if any(x in info for x in ["cuda", "cublas", "gpu"]):
+                    return "GPU Build Detected (Torch CUDA unavailable)"
+                return "CPU Only"
+        except Exception as e:
+            print(f"[WARN] Could not determine backend info: {e}")
+            return "Unknown Backend"
 
     def reply(self, user_text: str) -> str:
         """

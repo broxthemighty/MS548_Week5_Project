@@ -278,7 +278,7 @@ class App:
         self.response_time_label = tk.Label(
             ai_output_frame,
             text="Response time: —",
-            anchor="w",  # left align
+            anchor="e",  # right align
             font=("Segoe UI", 9, "italic")
         )
         self.response_time_label.pack(fill="x", padx=5, pady=(0, 5), anchor="w")
@@ -547,9 +547,12 @@ class App:
                     else:
                         color = "red"
 
+                    # combine processing time and GPU/CPU info
+                    backend_info = self.service.responses.backend_info
                     self.response_time_label.config(
-                        text=f"Response time: {elapsed:.2f} seconds",
-                        fg=color
+                        text=f"Response time: {elapsed:.2f} seconds   |   {backend_info}",
+                        fg=color,
+                        anchor="e"  # right align within label
                     )
 
                     # write the current conversation to chat_history.txt
